@@ -84,7 +84,8 @@ graph = build_graph()
 
 # memory backends
 checkpointer = MemorySaver()                     # STM (per session)
-store = InMemoryStore(namespace="ltm-multi")     # LTM (persists facts)
+store = InMemoryStore()     # LTM (persists facts)
 
 # compiled graph
 app = graph.compile(checkpointer=checkpointer, store=store)
+

@@ -1,0 +1,10 @@
+{
+  "name": "multiagent-memory-demo",
+  "version": "1.0.0",
+  "description": "LangGraph project demonstrating STM + LTM memory with controller routing",
+  "entrypoint": "graph:app",
+  "dependencies": "requirements.txt",
+  "env": {
+    "OPENAI_API_KEY": "@env.OPENAI_API_KEY"
+  }
+}

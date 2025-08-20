@@ -1,12 +1,16 @@
-from typing import Dict, Any
+from typing import TypedDict, Any
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.store.memory import InMemoryStore
 
 # ---- STATE ----
-class ConversationState(Dict[str, Any]):
-    pass
+class ConversationState(TypedDict, total=False):
+    user_message: str
+    last_message: str
+    memory_context: str
+    response: str
+    route: str
 
 # ---- STM Agent ----
 def stm_agent(state: ConversationState):
@@ -23,7 +27,6 @@ def stm_agent(state: ConversationState):
 
     response = llm.invoke(prompt)
 
-    # update STM (only last message is kept)
     state["last_message"] = user_message
     state["response"] = response.content
     return state
@@ -43,9 +46,9 @@ def ltm_agent(state: ConversationState):
 
     response = llm.invoke(prompt)
 
-    # update LTM if user says "remember"
     if "remember" in user_message.lower():
-        state["memory_context"] += f"\n{user_message}"
+        prev = state.get("memory_context", "")
+        state["memory_context"] = prev + f"\n{user_message}"
 
     state["response"] = response.content
     return state
@@ -62,11 +65,9 @@ def controller(state: ConversationState):
 # ---- Build Graph ----
 def build_graph():
     workflow = StateGraph(ConversationState)
-
     workflow.add_node("controller", controller)
     workflow.add_node("stm", stm_agent)
     workflow.add_node("ltm", ltm_agent)
-
     workflow.set_entry_point("controller")
 
     workflow.add_conditional_edges(
@@ -77,15 +78,13 @@ def build_graph():
 
     workflow.add_edge("stm", END)
     workflow.add_edge("ltm", END)
-
     return workflow
 
 graph = build_graph()
 
 # memory backends
-checkpointer = MemorySaver()                     # STM (per session)
-store = InMemoryStore()     # LTM (persists facts)
+checkpointer = MemorySaver()  # STM (per session)
+store = InMemoryStore()       # LTM (persists facts)
 
 # compiled graph
 app = graph.compile(checkpointer=checkpointer, store=store)
-
